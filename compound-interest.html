@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Variable Rate Compound Interest Calculator</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="">
+  </head>
+  <body>
+    <h1>Variable Rate Compound Interest Calculator</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>CR/DB</th>
+          <th>Balance</th>
+          <th>Rate</th>
+        </tr>
+      </thead>
+      <tbody id="changes">
+        <tr class="js-change">
+          <td><input type="date" id="date-0"></td>
+          <td></td>
+          <td><input type="number" id="balance-0" step="0.01"></td>
+          <td><input type="number" id="rate-0" step="0.01"></td>
+        </tr>
+        <!-- <tr class="js-change" id="aa4b88b5-6068-4e97-b159-3db57d19e6d9">
+          <td><input type="date" id="date-1"></td>
+          <td><input type="number" id="delta-1"></td>
+          <td id="balance-1"></td>
+          <td></td>
+          <td><button class="js-delete-row">❌</button></td>
+        </tr> -->
+        <!-- <tr class="js-change" id="b7c2f5c1-f416-4315-aca2-7f0fa3971dfc">
+          <td><input type="date" id="date-2"></td>
+          <td><input type="number" id="delta-2"></td>
+          <td id="balance-2"></td>
+          <td></td>
+          <td><button class="js-delete-row">❌</button></td>
+        </tr> -->
+        <!-- <tr class="js-change" id="bd7f38c2-82a5-4c9c-ad71-1a548a7b117f">
+          <td><input type="date" id="date-3"></td>
+          <td></td>
+          <td id="balance-3"></td>
+          <td><input type="number" id="rate-3"></td>
+          <td><button class="js-delete-row">❌</button></td>
+        </tr> -->
+        <tr id="button-row">
+          <td colspan="3">
+            <button id="add-delta">Add CR/DB</button>
+            <button id="add-rate">Add rate change</button>
+          </td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td><input type="date" id="end-date"></td>
+          <td></td>
+          <td id="end-balance"></td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+    <template id="template-row">
+      <tr class="js-change">
+        <td><input type="date" id="date"></td>
+        <td><input type="number" id="delta" step="0.01"></td>
+        <td id="balance"></td>
+        <td><input type="number" id="rate" step="0.01"></td>
+        <td><button class="js-delete-row">❌</button></td>
+      </tr>
+    </template>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <script type="module">
+      // import * as dayjs from "https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js";
+      import Big from 'https://unpkg.com/big.js@6.2.1/big.mjs';
+
+      const closeBalanceCell = document.getElementById('end-balance');
+      const closeDateInput = document.getElementById('end-date');
+      const buttonRow = document.getElementById('button-row');
+      const addRate = document.getElementById('add-rate');
+      const addDelta = document.getElementById('add-delta');
+      const changeRows = document.getElementById('changes');
+      const templateRow = document.getElementById('template-row');
+
+      window.addEventListener('load', event => {
+        restoreInputs();
+        calculate();
+      });
+      window.addEventListener('input', event => {
+        cacheInputs();
+        calculate();
+      });
+      window.addEventListener('click', event => {
+        if (event.target.classList.contains('js-delete-row')) deleteRow(event.target);
+        if (event.target.id == 'add-rate') addRow(true);
+        if (event.target.id == 'add-delta') addRow(false);
+      });
+
+      function cacheInputs () {
+        const named = document.querySelectorAll('input[id]');
+        const unnamed = document.querySelectorAll('input:not([id])');
+        const cache = { '': [] };
+
+        [...named].forEach(e => { if (e.value) cache[e.id] = e.value });
+        [...unnamed].forEach((e, i) => { if (e.value) cache[''][i] = e.value });
+        localStorage.setItem('inputCache', JSON.stringify(cache));
+      }
+
+      function restoreInputs () {
+        const cache = JSON.parse(localStorage.getItem('inputCache'));
+        if (!cache) return;
+        const named = document.querySelectorAll('input[id]');
+        const unnamed = document.querySelectorAll('input:not([id])');
+
+        [...named].forEach(e => { if (cache[e.id]) e.value = cache[e.id] });
+        [...unnamed].forEach((e, i) => { if (cache[''][i]) e.value = cache[''][i] });
+      }
+
+      const sanitiseNumber = (s) => {
+        console.log('s', s);
+        const n = s.trim().replace(/[^\d.]/, '');
+        console.log('n', n);
+        return n;
+      }
+
+      function deleteRow (button) {
+        const row = button.closest('.js-change');
+        // const id = row.id;
+        // const matches = changes.filter(x => x.id == id) || [];
+        // while (matches.length > 0) {
+        //   const index = changes.indexOf(matches.shift());
+        //   changes.splice(index, 1);
+        // }
+        row.remove();
+        calculate();
+      }
+
+      function addRow (rate = true) {
+        const newRowFragment = templateRow.content.cloneNode(true);
+        newRowFragment.querySelector('tr').id = crypto.randomUUID();
+        newRowFragment.querySelector('#date').id = ['date', crypto.randomUUID()].join('-');
+        newRowFragment.querySelector('#balance').id = ['balance', crypto.randomUUID()].join('-');
+        if (rate) {
+          newRowFragment.querySelector('#delta').remove();
+          newRowFragment.querySelector('#rate').id = ['rate', crypto.randomUUID()].join('-');
+        } else {
+          newRowFragment.querySelector('#delta').id = ['delta', crypto.randomUUID()].join('-');
+          newRowFragment.querySelector('#rate').remove();
+        }
+        buttonRow.parentElement.insertBefore(newRowFragment, buttonRow);
+      }
+
+      function getChanges () {
+        const changes = [];
+        const rows = changeRows.querySelectorAll('.js-change');
+        [...rows].forEach(r => {
+          // console.log(r);
+          const id = r.id;
+          const date = r.querySelector('[id|=date]');
+          const delta = r.querySelector('[id|=delta]');
+          const balance = r.querySelector('[id|=balance]');
+          const rate = r.querySelector('[id|=rate]');
+          // console.log({date, delta, balance, rate});
+
+          changes.push({
+            id,
+            date: dayjs(date.value),
+            delta: delta ? Big(sanitiseNumber(delta.value)) : 0,
+            balance: 'value' in balance ? Big(sanitiseNumber(balance.value)) : undefined,
+            balanceElement: 'value' in balance ? undefined : balance,
+            rate: rate? Big(sanitiseNumber(rate.value)).div(100) : undefined
+          });
+        });
+        const end = {
+          date: dayjs(closeDateInput.value),
+          delta: 0,
+          balance: undefined,
+          balanceElement: closeBalanceCell
+        };
+        changes.push(end);
+        return changes;
+      }
+
+      function calculate () {
+
+        const changes = getChanges();
+        console.log([...changes]);
+
+        while (changes.length > 0) {
+          const current = changes.shift();
+          const next = changes[0];
+          // console.dir({current,  next});
+
+          const dailyRate = current.rate.div(365);
+          const days =  Math.abs(next.date.diff(current.date, 'days'));
+          if (days > 36525) throw new Error(`period is too long (${days} days)`);
+
+          if (days > 0) next.balance = dailyRate.plus(1).pow(days - 1).times(current.balance);
+          next.balance = next.balance.plus(current.delta);
+          next.balance = dailyRate.plus(1).pow(1).times(next.balance).toFixed(4);
+          if (next.rate == undefined) next.rate = current.rate;
+          // console.dir({current,  next});
+          next.balanceElement.textContent = next.balance;
+        }
+      }
+      
+    </script>
+  </body>
+</html>
