@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="">
+  </head>
+
+  <body>
+    <main>
+      <h1>Compound Interest Calculator</h1>
+
+      <p>
+        <select class="account" name="accounts" id="accounts" autocomplete="off"></select>
+      </p>
+      <p>
+        <input class="account" type="text" name="account-name" id="account-name" autocomplete="off">
+      </p>
+
+      <table class="entry-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>CR/DB</th>
+            <th>Balance</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="txx"></tbody>
+      </table>
+  
+      <details>
+        <summary>Add transaction</summary>
+        <form id="add-tx" method="dialog">
+          <input type="hidden" name="type" value="tx">
+          <label>
+            Date:
+            <input type="date" name="date">
+          </label>
+          <label>
+            Amount:
+            <input type="number" name="amount" step="0.01">
+          </label>
+          <input type="submit" value="Add transaction">
+        </form>
+      </details>
+      <details>
+        <summary>Add rate  change</summary>
+        <form id="add-rx" method="dialog">
+          <input type="hidden" name="type" value="rx">
+          <label>
+            Date:
+            <input type="date" name="date">
+          </label>
+          <label>
+            New rate:
+            <input type="number" name="rate" step="0.01">
+          </label>
+          <input type="submit",  value="Add rate change">
+        </form>
+      </details>
+      <details>
+        <summary>Add balance query</summary>
+        <form id="add-bq" method="dialog">
+          <input type="hidden" name="type" value="bq">
+          <label>
+            Date:
+            <input type="date" name="date">
+          </label>
+          <input type="submit" value="Add balance query">
+        </form>
+      </details>
+      <details>
+        <summary>Interest</summary>
+        <label for="pi-freq">
+          Frequency:
+          <select name="pi-freq" id="pi-freq">
+            <option>monthly</option>
+          </select>
+        </label>
+      </details>
+    </main>
+
+    <template id="tx">
+      <tr class="tx">
+        <td><input id="date" type="date"></td>
+        <td><input type="text" id="ds"></td>
+        <td><input type="number" id="qm"></td>
+        <td id="bl"></td>
+        <td>
+          <button class="del">delete</button>
+        </td>
+      </tr>
+    </template>
+    
+    <!-- <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/customParseFormat.js"></script> -->
+    <script src="/dayjs.min.js"></script>
+    <script src="/customParseFormat.js"></script>
+    <script src="/localforage.min.js"></script>
+    <script type="application/javascript">
+      dayjs.extend(globalThis.dayjs_plugin_customParseFormat);
+      // import { dayjs } from 'https://cdn.jsdelivr.net/npm/dayjs@latest/esm/index.js';
+      // import { customParseFormat } from 'https://cdn.jsdelivr.net/npm/dayjs@latest/esm/plugin/customParseFormat/index.js';
+      // dayjs.extend(customParseFormat)
+
+      const TYPE_TX = 'tx';
+      const TYPE_RX = 'rx';
+      const TYPE_BQ = 'bq';
+      const FORMAT_DATE = 'YYYY-MM-DD';
+      const LS_KEY = 'comp_int_calc';
+
+      const DB_NAME = 'comp_int_calc';
+      const DB_VERSION = 1; // Use a long long for this value (don't use a float)
+      const DB_STORE_NAME = 'accounts';
+
+      self.accounts = [];
+      self.ledger = new Map();
+      const accSel = document.getElementById('accounts');
+      const accName = document.getElementById('account-name');
+      const txx = document.getElementById('txx');
+      const addTx = document.getElementById('add-tx');
+      const addRx = document.getElementById('add-rx');
+      const addBq = document.getElementById('add-bq');
+      
+      const tableOne = localforage.createInstance({
+        name: DB_NAME,
+        storeName: DB_STORE_NAME
+      });
+
+      function addTransaction (date, amount) {
+        console.log({date, amount});
+        const timestamp = dayjs(date, FORMAT_DATE, true);
+        console.log({timestamp});
+        if (! timestamp.isValid()) return console.error(`'${date}' is not a valid date`);
+        let id = self.crypto.randomUUID();
+        while (self.ledger.has(id)) id = self.crypto.randomUUID();
+        self.ledger.set(id, {timestamp, type: TYPE_TX, amount});
+        console.log(`Added transaction ID '${id}'`);
+        return id;
+      }
+      
+      function editTransaction (id, date, amount) {
+        const existing = self.ledger.get(id);
+        if (! existing) return console.error(`No entry with ID '${id}'`);
+        if (existing.type !== TYPE_TX) return console.error(`Entry ID '${id}' is not a credit/debit transaction`);
+        const timestamp = dayjs(date, FORMAT_DATE, true);
+        if (! timestamp.isValid()) return console.error(`'${date}' is not a valid date`);
+        self.ledger.set(id, {timestamp, type: TYPE_TX, amount});
+        console.log(`Updated transaction ID '${id}'`);
+      }
+      
+      function addRateChange (date, rate) {
+        const timestamp = dayjs(date, FORMAT_DATE, true);
+        if (! timestamp.isValid()) return console.error(`'${date}' is not a valid date`);
+        let id = self.crypto.randomUUID();
+        while (self.ledger.has(id)) id = self.crypto.randomUUID();
+        self.ledger.set(id, {timestamp, type: TYPE_RX, rate});
+        console.log(`Added rate change ID '${id}'`);
+        return id;
+      }
+      
+      function editRateChange (id, date, rate) {
+        const existing = self.ledger.get(id);
+        if (! existing) return console.error(`No entry with ID '${id}'`);
+        if (existing.type !== TYPE_RX) return console.error(`Entry ID '${id}' is not a rate change`);
+        const timestamp = dayjs(date, FORMAT_DATE, true);
+        if (! timestamp.isValid()) return console.error(`'${date}' is not a valid date`);
+        self.ledger.set(id, {timestamp, type: TYPE_RX, rate});
+        console.log(`Updated rate change ID '${id}'`);
+      }
+      
+      function addBalanceQuery (date) {
+        const timestamp = dayjs(date, FORMAT_DATE, true);
+        if (! timestamp.isValid()) return console.error(`'${date}' is not a valid date`);
+        let id = self.crypto.randomUUID();
+        while (self.ledger.has(id)) id = self.crypto.randomUUID();
+        self.ledger.set(id, {timestamp, type: TYPE_BQ});
+        console.log(`Added balance query ID '${id}'`);
+        return id;
+      }
+      
+      function editBalanceQuery (id, date) {
+        const existing = self.ledger.get(id);
+        if (! existing) return console.error(`No entry with ID '${id}'`);
+        if (existing.type !== TYPE_BQ) return console.error(`Entry ID '${id}' is not a balance query`);
+        const timestamp = dayjs(date, FORMAT_DATE, true);
+        if (! timestamp.isValid()) return console.error(`'${date}' is not a valid date`);
+        self.ledger.set(id, {timestamp, type: TYPE_BQ});
+        console.log(`Updated balance query ID '${id}'`);
+      }
+      
+      function deleteEntry (id) {
+        const existing = self.ledger.get(id);
+        if (! existing) return console.error(`No entry with ID '${id}'`);
+        const type = existing.type;
+        self.ledger.delete(id);
+        console.log(`Deleted entry ID '${id}' with type '${type}'`);
+      }
+
+      function saveLedger () {
+        const entries = [...self.ledger].map(([id, entry]) => {return {id, ...entry}});
+        const name = accName.value;
+        const acc = {name, entries}
+        const serialised = JSON.stringify(acc);
+        self.localStorage.setItem(LS_KEY, serialised);
+      }
+
+      function loadAccounts () {
+        const saved = localStorage.getItem(LS_KEY);
+        console.log({saved});
+        if (! saved) return undefined;
+        const accounts = JSON.parse(saved);
+        if (! accounts) return undefined;
+        if (! Array.isArray(accounts)) return undefined;
+        self.accounts = accounts;
+        console.log({accounts});
+        for (const acc of accounts) {
+          const opt = document.createElement('option');
+          opt.textContent = acc.name;
+          accSel.appendChild(opt);
+        }
+        if (accSel.value) loadLedger(accSel.value);
+      }
+
+      function loadLedger (name) {
+        const account = self.accounts.find(acc => acc.name === name);
+        console.log({name, 'self.accounts': self.accounts, account});
+        if (! account) return undefined;
+        if (! account.entries) return undefined;
+        const entries = account.entries;
+        if (! Array.isArray(entries)) return undefined;
+        const processed = entries.map(({id, timestamp, ...entry}) => {
+          timestamp = dayjs(timestamp);
+          return [id, {timestamp, ...entry}];
+        });
+        self.ledger = new Map(processed);
+        accName.value = account.name;
+      }
+
+      function sortLedger () {
+        const entries = [...self.ledger];
+        const sorted = entries.sort(([ida, a], [idb, b]) => a.timestamp - b.timestamp);
+        return new Map(sorted);
+      }
+      
+      function compute () {
+        self.ledger = sortLedger(self.ledger);
+        const array = [...self.ledger].map(([id, entry]) => {return {id, ...entry}});
+        let prev, lastRX;
+        const balanced = array.map((current, index) => {
+          const {id, timestamp, type, rate, amount, ...entry} = current;
+          if (type === TYPE_RX) {
+            const prevLastRX = lastRX;
+            lastRX = timestamp.format('YYYY-MM-DD');
+            if (prevLastRX === lastRX) return console.error(`Two rate changes on ${lastRX}`);
+            if (prev?.rate) current.prevRate = prev.rate;
+          }
+          // console.log({prev, current});
+          if (! prev) return prev = {...current};
+          if (!! (amount ?? false)) current.balance = (prev.balance ?? 0) + amount;
+          if ((prev.rate ?? false) && (prev.amount ?? false)) {
+            const prevRate = prev.rate;
+            const duration = timestamp.diff(prev.timestamp, 'day');
+            const interest = prev.balance * (prev.rate / 100) * (duration / 365);
+            console.log({interest});
+            const balance = prev.balance + (amount ? amount : 0) + interest;
+            Object.assign(current, {rate: rate ?? prev.rate, balance});
+          }
+          prev = {...prev, ...current};
+          return current;
+        });
+        console.log('ledger (balanced)', balanced);
+        return balanced;
+      }
+
+      const descriptions  = {
+        [TYPE_TX]: ({amount}) => amount < 0 ? `Debit` : `Deposit`,
+        [TYPE_RX]: ({rate, prevRate}) => `Rate change ${prevRate ? `from ${prevRate}% ` : ''}to ${rate}%`,
+        [TYPE_BQ]: () => 'Balance'
+      }
+
+      function printLedger (ledger) {
+        const AUD = new Intl.NumberFormat('en-AU', {
+          style: 'currency',
+          currency: 'AUD',
+        });
+        const shortDate = new Intl.DateTimeFormat('en-AU', {
+          year: "numeric",
+          // month: "short",
+          month: "2-digit",
+          day: "2-digit"
+        })
+        const td = (...children) => {
+          const td = document.createElement('td');
+          td.append(...children);
+          return td;
+        }
+        for (const entry of ledger) {
+          const tr = document.createElement('tr');
+          const ts = document.createElement('time');
+          const ds = document.createElement('td');
+          const tx = document.createElement('td');
+          const bl = document.createElement('td');
+          const ct = document.createElement('td');
+          const ed = document.createElement('button');
+          const dl = document.createElement('button');
+
+          ts.textContent = entry.timestamp.format('YYYY-MM-DD');
+          ts.dateTime = entry.timestamp.format('YYYY-MM-DD');
+          ds.textContent = descriptions[entry.type](entry);
+          tx.textContent = entry.amount ? AUD.format(Number(entry.amount)) : '';
+          bl.textContent = entry.balance ? AUD.format(entry.balance) : '';
+          ed.textContent = 'edit';
+          ed.classList.add('js-edit');
+          ed.dataset.eid = entry.id;
+          dl.textContent = 'delete';
+          dl.classList.add('js-delete');
+          dl.dataset.eid = entry.id;
+
+          // tr.append(document.createElement('td'), ds, tx, bl);
+          tr.append(td(ts), ds, tx, bl, td(ed, dl));
+          txx.append(tr);
+        }
+      }
+
+      function clearPrinted () {
+        while (txx.firstChild) txx.removeChild(txx.lastChild);
+      }
+
+      function addEntry (entry) {
+        const date = dayjs(entry.date, FORMAT_DATE, true);
+        if (! date.isValid()) return console.error(`'${date}' is not a valid date`);
+        if (entry.type === TYPE_TX) addTransaction(date, Number(entry.amount));
+        else if (entry.type === TYPE_RX) addRateChange(date, Number(entry.rate));
+        else if (entry.type === TYPE_BQ) addBalanceQuery(date);
+        else return;
+        clearPrinted();
+        printLedger(compute());
+        saveLedger();
+      }
+
+      function editEntry () {
+
+      }
+
+      window.addEventListener('load', event => {
+        loadAccounts();
+        printLedger(compute());
+      });
+
+      window.addEventListener('change', event => {
+        if (event.target === accSel) loadLedger(event.target.value);
+      })
+
+      window.addEventListener('submit', event => {
+        const form = new FormData(event.target);
+        addEntry(Object.fromEntries(form.entries()));
+        event.target.querySelector('input:not([type=hidden]), select').focus();
+      });
+
+      window.addEventListener('click', event => {
+        if (event.target.classList.contains('js-delete')) deleteEntry(event.target.dataset.eid);
+        else if (event.target.classList.contains('js-edit')) editEntry(event.target.dataset.eid);
+        else return;
+        clearPrinted();
+        printLedger(compute());
+        saveLedger();
+      });
+    </script>
+
+    <style>
+      * { box-sizing: border-box; }
+
+      h1 { text-align: center; }
+
+      .account {
+        width: 100%;
+      }
+
+      input.account {
+        font-size: max(16px, 1rem);
+      }
+
+      main {
+        width: 40rem;
+        max-width: 100%;
+        margin: 0 auto;
+      }
+
+      .entry-table {
+        width: 100%;
+        border-collapse: collapse;
+        border-color: currentColor;
+        border-width: .2rem;
+        border-top-style: solid;
+        border-bottom-style: solid;
+      }
+
+      .entry-table thead th {
+        border-bottom: .15rem solid currentColor;
+        padding: .2rem;
+      }
+
+      .entry-table tbody tr:nth-of-type(odd) th,
+      .entry-table tbody tr:nth-of-type(odd) td {
+        background-color: hsla(0, 0%,  50%, 0.1);
+      }
+
+      td {
+        padding: 0 .5rem;
+      }
+
+      tr th:first-child,
+      tr td:first-child {
+        padding-left: .25rem;
+      }
+
+      tr th:last-child,
+      tr td:last-child {
+        padding-right: .25rem;
+      }
+    </style>
+  </body>
+</html>

@@ -1,0 +1,139 @@
+[
+  {
+    "id": "d272f813-8b50-4a8c-9275-28682806acd4",
+    "timestamp": "2020-12-17T13:00:00.000Z",
+    "type": "rx",
+    "rate": 0.4
+  },
+  {
+    "id": "92c19550-324c-4297-bd26-b65fe55bd950",
+    "timestamp": "2021-01-30T13:00:00.000Z",
+    "type": "tx",
+    "amount": 15128.6
+  },
+  {
+    "id": "8b35856d-baeb-4407-8510-3afc4698f06a",
+    "timestamp": "2021-02-27T13:00:00.000Z",
+    "type": "bq"
+  },
+  {
+    "id": "975f971d-3147-469d-924b-8ffe7a6e57e9",
+    "timestamp": "2021-03-25T13:00:00.000Z",
+    "type": "tx",
+    "amount": 48
+  },
+  {
+    "id": "65457d6e-7da3-44dd-a5ad-0525fb45cb25",
+    "timestamp": "2021-03-30T13:00:00.000Z",
+    "type": "bq"
+  },
+  {
+    "id": "206b4d95-e379-4235-8a9b-c94b693e34ec",
+    "timestamp": "2021-04-29T14:00:00.000Z",
+    "type": "bq"
+  },
+  {
+    "id": "c193ae48-0241-443e-8c83-848244f32c81",
+    "timestamp": "2021-05-30T14:00:00.000Z",
+    "type": "bq"
+  },
+  {
+    "id": "8b3d2cc4-5da2-483f-af3a-9ea707b0a204",
+    "timestamp": "2021-06-29T14:00:00.000Z",
+    "type": "bq"
+  },
+  {
+    "id": "c33fb3c2-2f70-4876-ba64-deb5a0449a62",
+    "timestamp": "2021-07-30T14:00:00.000Z",
+    "type": "bq"
+  },
+  {
+    "id": "dfacbbe0-893d-440a-b126-fc333fc639bf",
+    "timestamp": "2021-09-16T14:00:00.000Z",
+    "type": "rx",
+    "rate": 0.35
+  },
+  {
+    "id": "9df2ace1-86cd-4112-a096-12f9579a41d7",
+    "timestamp": "2021-09-22T14:00:00.000Z",
+    "type": "tx",
+    "amount": 48
+  },
+  {
+    "id": "16374f5c-6e0e-4dd0-9bfd-675a36d60199",
+    "timestamp": "2022-03-31T13:00:00.000Z",
+    "type": "tx",
+    "amount": 48
+  },
+  {
+    "id": "38c6e1a5-0fbb-4eec-a961-b99d809dfbc6",
+    "timestamp": "2022-04-12T14:00:00.000Z",
+    "type": "rx",
+    "rate": 0.45
+  },
+  {
+    "id": "4c04e292-df62-4b00-8752-0460ea06c0eb",
+    "timestamp": "2022-06-02T14:00:00.000Z",
+    "type": "rx",
+    "rate": 0.7
+  },
+  {
+    "id": "deb1a8b1-62d3-496d-b83a-c7f285e09779",
+    "timestamp": "2022-07-04T14:00:00.000Z",
+    "type": "rx",
+    "rate": 1.2
+  },
+  {
+    "id": "6a2654f7-3ea5-4342-971c-cc6aac4f8eed",
+    "timestamp": "2022-08-11T14:00:00.000Z",
+    "type": "rx",
+    "rate": 1.7
+  },
+  {
+    "id": "4dbf2544-15f7-4b09-a8cf-a4ec9a99a892",
+    "timestamp": "2022-09-20T14:00:00.000Z",
+    "type": "tx",
+    "amount": 51
+  },
+  {
+    "id": "d89d3327-e7be-4590-9af1-10534f805538",
+    "timestamp": "2022-10-19T13:00:00.000Z",
+    "type": "rx",
+    "rate": 2.2
+  },
+  {
+    "id": "90a9aa3a-e0b4-49e5-898e-dbeb5b2d8db0",
+    "timestamp": "2022-11-06T13:00:00.000Z",
+    "type": "rx",
+    "rate": 2.8
+  },
+  {
+    "id": "7d25e8d9-d22f-450a-8587-eb6274d5f39f",
+    "timestamp": "2022-12-12T13:00:00.000Z",
+    "type": "rx",
+    "rate": 3.2
+  },
+  {
+    "id": "cd9f0147-ed0b-4842-8440-637bfd584daf",
+    "timestamp": "2023-02-13T13:00:00.000Z",
+    "type": "rx",
+    "rate": 3.9
+  },
+  {
+    "id": "f9d36575-f03f-4d99-bdb0-ec72d6425a68",
+    "timestamp": "2023-03-29T13:00:00.000Z",
+    "type": "rx",
+    "rate": 4
+  },
+  {
+    "id": "2bb3ce4f-2ecb-4387-80de-67e3638b1cd2",
+    "timestamp": "2023-03-30T13:00:00.000Z",
+    "type": "tx",
+    "amount": 51
+  },
+  {
+    "id": "edc8e14e-8576-43b1-979e-1773390730f0",
+    "timestamp": "2023-06-29T14:00:00.000Z",
+    "type": "bq"
+  }
+]

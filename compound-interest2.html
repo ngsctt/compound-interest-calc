@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Compound Interest Calculator</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="">
+    <style>
+      :invalid {
+        box-shadow: 0 0 .1rem .2rem red;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Variable Rate Compound Interest Calculator</h1>
+    <table>
+      <thead>
+        <th>Date</th>
+        <th>CR/DR</th>
+        <th>Rate</th>
+        <th>Balance</th>
+        <tr id="open">
+          <td><input type="date" id="open-date" class="js-date" data-uid="open" required></td>
+          <td>Opening balance</td>
+          <td><input type="number" id="open-rate" class="js-rate" data-uid="open" step="0.1" min="0" required></td>
+          <td><input type="number" id="open-bal" class="js-balance" data-uid="open" step="0.01" min="0" required></td>
+        </tr>
+      </thead>
+      <tbody id="lineitems">
+      </tbody>
+      <tfoot>
+        <tr class="button-row">
+          <td colspan="4">
+            <button id="add-rate-change">Add rate change</button>
+            <button id="add-tx">Add transaction</button>
+          </td>
+        </tr>
+        <tr id="close">
+          <td><input type="date" id="close-date" class="js-date" data-uid="close" required></td>
+          <td colspan="2">Closing balance</td>
+          <td><span class="js-balance" data-uid="close"></span></td>
+        </tr>
+      </tfoot>
+    </table>
+    <template id="lineitem-template">
+      <tr>
+        <td><input type="date" class="js-date" required></td>
+        <td><input type="number" class="js-tx" step="0.01" required></td>
+        <td><input type="number" class="js-rate" step="0.1" required></td>
+        <td><span class="js-balance"></span></td>
+        <td><button class="js-delete">❌</button></td>
+      </tr>
+    </template>
+
+    <script type="module">
+      const elements = {
+        lineitems: document.getElementById('lineitems'),
+        // addRateChangeButton: document.getElementById('add-rate-change'),
+        // addTxChangeButton: document.getElementById('add-tx'),
+        lineitemTemplate: document.getElementById('lineitem-template'),
+        openDate: document.getElementById('open-date'),
+        openRate: document.getElementById('open-rate'),
+        openBal: document.getElementById('open-bal'),
+        closeDate: document.getElementById('close-date'),
+      };
+
+      const RATE = 'rate';
+      const TX = 'tx';
+
+      class ExArray extends Array {
+        get last () {
+          return this[this.length - 1];
+        }
+        set last (item) {
+          this[this.length - 1] =  item;
+        }
+      }
+
+      class ExMap extends Map {
+        get lastKey () {
+          const keys = this.keys();
+          return keys[keys.length - 1];
+        }
+        get lastValue () {
+          const values = this.values();
+          return values[values.length - 1];
+        }
+        get last () {
+          const entries = this.entries();
+          return entries[entries.length - 1];
+        }
+        set last (item) {
+          this.set(this.lastKey, item);
+        }
+      }
+
+      const now = new  Date();
+      const _default = {
+        open: {
+          date: undefined,
+          rate: 0,
+          balance: 0
+        },
+        lineitems: new Map(),
+        close: {
+          date: [now.getFullYear().toString().padStart(4,'0'), (now.getMonth() + 1).toString().padStart(2,'0'), now.getDate().toString().padStart(2,'0')].join('-'),
+        }
+      }
+
+      function replacer (key, value) {
+        if(value instanceof ExMap) {
+          return {
+            dataType: 'ExMap',
+            value: [...value]
+          };
+        } else if(value instanceof Map) {
+          return {
+            dataType: 'Map',
+            value: [...value]
+          };
+        } else {
+          return value;
+        }
+      }
+
+      function reviver(key, value) {
+        if(typeof value === 'object' && value !== null) {
+          if (value.dataType === 'ExMap') {
+            return new ExMap(value.value);
+          } else if (value.dataType === 'Map') {
+            return new Map(value.value);
+          }
+        }
+        return value;
+      }
+
+
+      function cacheData () {
+        console.log('caching!');
+        const cache = JSON.stringify(window.data, replacer);
+        localStorage.setItem('cache', cache);
+      }
+
+      function restoreData () {
+        console.log('restoring!');
+        const string = localStorage.getItem('cache');
+        const cache = JSON.parse(string, reviver);
+        console.log('cache', cache);
+        window.data = {..._default, ...cache};
+        console.log('window.data', window.data);
+      }
+
+      function addRow (lineitem) {
+        console.log('lineitem', lineitem);
+        const template = elements.lineitemTemplate.content.cloneNode(true)
+        console.log('template',template);
+        const row = template.firstElementChild;
+        console.log('row',row);
+        const date = template.querySelector('.js-date');
+        const tx = template.querySelector('.js-tx');
+        const rate = template.querySelector('.js-rate');
+        const bal = template.querySelector('.js-balance');
+        const del = template.querySelector('.js-delete');
+        row.id = lineitem.uid;
+        date.dataset.uid = row.id;
+        date.value = lineitem.date;
+        if (window.data.open.date) date.min = window.data.open.date;
+        if (window.data.close.date) date.max = window.data.close.date;
+        tx.dataset.uid = row.id;
+        tx.value = lineitem.tx ?? '';
+        rate.dataset.uid = row.id;
+        rate.value = lineitem.rate ?? '';
+        if (lineitem.type !== RATE) rate.remove();
+        if (lineitem.type !== TX) tx.remove();
+        bal.dataset.uid = row.id;
+        bal.value ? bal.value = lineitem.balance : bal.textContent = lineitem.balance;
+        del.dataset.uid = row.id;
+        
+        elements.lineitems.appendChild(row);
+
+        lineitem.row = row;
+        return lineitem;
+      }
+
+      function addLineitem (type) {
+        console.log(type);
+        const entry = {
+          uid: crypto.randomUUID(),
+          type: type,
+          date: window.data.lineitems.lastValue?.date ?? window.data.open.date ?? undefined,
+        };
+        if (type === RATE) entry.rate = window.data.lineitems.lastValue?.rate ?? window.data.open.rate ?? undefined;
+        else if (type === TX) entry.tx = 0;
+        else return;
+
+        const {uid, ...lineitem} = addRow(entry);
+        window.data.lineitems.set(uid, lineitem);
+        cacheData();
+        console.log(window.data.lineitems);
+      }
+
+      function deleteLineitem (uid) {
+        const entry = window.data.lineitems.get(uid);
+        entry.row.remove();
+        window.data.lineitems.delete(uid);
+
+        cacheData();
+        calculate();
+      }
+
+      function validate () {
+        console.log('elements.openDate', elements.openDate);
+        if (!elements.openDate.value) elements.openDate.setCustomValidity('Opening date is required');
+        if (window.data.open.date) document.querySelectorAll('.js-date:not(#open-date)').forEach(e => e.min = elements.openDate.value);
+        if (window.data.close.date) document.querySelectorAll('.js-date:not(#close-date)').forEach(e => e.max = elements.closeDate.value);
+        if (!elements.openRate.value) elements.openDate.setCustomValidity('Opening interest rate is required');
+        if (!elements.openBal.value) elements.openDate.setCustomValidity('Opening balance is required');
+        if (!elements.closeDate.value) elements.openDate.setCustomValidity('Closing date is required');
+      }
+
+      function calculate () {
+        validate();
+      }
+
+      function populate () {
+        elements.openDate.value = window.data.open.date;
+        elements.openRate.value = window.data.open.rate;
+        elements.openBal.value = window.data.open.balance;
+        elements.closeDate.value = window.data.close.date;
+        [...window.data.lineitems.entries()].forEach(([uid, lineitem]) => {
+          const {row} = addRow({uid, ...lineitem});
+          lineitem.row = row;
+        })
+        console.log(window.data.lineitems);
+      }
+
+      function updateValues (target) {
+        const uid = target.dataset.uid;
+        let entry;
+        if (uid === 'open') entry = window.data.open;
+        else if (uid === 'close') entry = window.data.close;
+        else entry = window.data.lineitems.get(uid);
+        if (target.classList.contains('js-date')) entry.date = target.value;
+        else if (target.classList.contains('js-rate')) entry.rate = target.value;
+        else if (target.classList.contains('js-tx')) entry.tx = target.value;
+        else if (target.classList.contains('js-balance')) entry.bal = target.value;
+      }
+
+      window.addEventListener('load', event => {
+        restoreData();
+        populate();
+        calculate();
+      });
+      window.addEventListener('input', event => {
+        updateValues(event.target);
+        cacheData();
+        calculate();
+      });
+      window.addEventListener('click', event => {
+        if (event.target.id === 'add-rate-change') addLineitem(RATE);
+        if (event.target.id === 'add-tx') addLineitem(TX);
+        if (event.target.classList.contains('js-delete')) deleteLineitem(event.target.dataset.uid);
+      });
+    </script>
+  </body>
+</html>

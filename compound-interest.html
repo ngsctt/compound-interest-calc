@@ -13,28 +13,28 @@
       <thead>
         <tr>
           <th>Date</th>
-          <th>CR/DB</th>
+          <th>CR/DR</th>
           <th>Balance</th>
           <th>Rate</th>
         </tr>
       </thead>
       <tbody id="changes">
-        <tr class="js-change">
-          <td><input type="date" id="date-0"></td>
+        <tr class="js-change" id="open-row" data-type="open">
+          <td><input type="date" id="open-date"></td>
           <td></td>
-          <td><input type="number" id="balance-0" step="0.01"></td>
-          <td><input type="number" id="rate-0" step="0.01"></td>
+          <td><input type="number" id="open-balance" step="0.01"></td>
+          <td><input type="number" id="open-rate" step="0.01"></td>
         </tr>
         <!-- <tr class="js-change" id="aa4b88b5-6068-4e97-b159-3db57d19e6d9">
           <td><input type="date" id="date-1"></td>
-          <td><input type="number" id="delta-1"></td>
+          <td><input type="number" id="tx-1"></td>
           <td id="balance-1"></td>
           <td></td>
           <td><button class="js-delete-row">❌</button></td>
         </tr> -->
         <!-- <tr class="js-change" id="b7c2f5c1-f416-4315-aca2-7f0fa3971dfc">
           <td><input type="date" id="date-2"></td>
-          <td><input type="number" id="delta-2"></td>
+          <td><input type="number" id="tx-2"></td>
           <td id="balance-2"></td>
           <td></td>
           <td><button class="js-delete-row">❌</button></td>
@@ -48,7 +48,7 @@
         </tr> -->
         <tr id="button-row">
           <td colspan="3">
-            <button id="add-delta">Add CR/DB</button>
+            <button id="add-tx">Add CR/DB</button>
             <button id="add-rate">Add rate change</button>
           </td>
         </tr>
@@ -64,10 +64,10 @@
     </table>
     <template id="template-row">
       <tr class="js-change">
-        <td><input type="date" id="date"></td>
-        <td><input type="number" id="delta" step="0.01"></td>
-        <td id="balance"></td>
-        <td><input type="number" id="rate" step="0.01"></td>
+        <td><input type="date" class="js-date"></td>
+        <td><input type="number" class="js-tx" step="0.01"></td>
+        <td class="js-balance"></td>
+        <td><input type="number" class="js-rate" step="0.01"></td>
         <td><button class="js-delete-row">❌</button></td>
       </tr>
     </template>
@@ -76,47 +76,97 @@
       // import * as dayjs from "https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js";
       import Big from 'https://unpkg.com/big.js@6.2.1/big.mjs';
 
-      const closeBalanceCell = document.getElementById('end-balance');
+      window.Big = Big;
+
+      const openDateInput = document.getElementById('open-date');
+      const openBalanceInput = document.getElementById('open-balance');
+      const openRateInput = document.getElementById('open-rate');
       const closeDateInput = document.getElementById('end-date');
+      const closeBalanceCell = document.getElementById('end-balance');
       const buttonRow = document.getElementById('button-row');
       const addRate = document.getElementById('add-rate');
-      const addDelta = document.getElementById('add-delta');
+      const addtx = document.getElementById('add-tx');
       const changeRows = document.getElementById('changes');
       const templateRow = document.getElementById('template-row');
 
       window.addEventListener('load', event => {
-        restoreInputs();
+        restoreData();
         calculate();
+        populate(window.data);
       });
       window.addEventListener('input', event => {
-        cacheInputs();
         calculate();
       });
       window.addEventListener('click', event => {
         if (event.target.classList.contains('js-delete-row')) deleteRow(event.target);
         if (event.target.id == 'add-rate') addRow(true);
-        if (event.target.id == 'add-delta') addRow(false);
+        if (event.target.id == 'add-tx') addRow(false);
       });
 
-      function cacheInputs () {
-        const named = document.querySelectorAll('input[id]');
-        const unnamed = document.querySelectorAll('input:not([id])');
-        const cache = { '': [] };
+      // function cacheInputs () {
+      //   const named = document.querySelectorAll('input[id]');
+      //   const unnamed = document.querySelectorAll('input:not([id])');
+      //   const cache = { '': [] };
 
-        [...named].forEach(e => { if (e.value) cache[e.id] = e.value });
-        [...unnamed].forEach((e, i) => { if (e.value) cache[''][i] = e.value });
-        localStorage.setItem('inputCache', JSON.stringify(cache));
+      //   [...named].forEach(e => { if (e.value) cache[e.id] = e.value });
+      //   [...unnamed].forEach((e, i) => { if (e.value) cache[''][i] = e.value });
+      //   localStorage.setItem('inputCache', JSON.stringify(cache));
+      // }
+
+      // function restoreInputs () {
+      //   const cache = JSON.parse(localStorage.getItem('inputCache'));
+      //   if (!cache) return;
+      //   const named = document.querySelectorAll('input[id]');
+      //   const unnamed = document.querySelectorAll('input:not([id])');
+
+      //   [...named].forEach(e => { if (cache[e.id]) e.value = cache[e.id] });
+      //   [...unnamed].forEach((e, i) => { if (cache[''][i]) e.value = cache[''][i] });
+      // }
+
+      const cacheData = (data) => {
+        data.changes.forEach(c => delete c.balance);
+        delete data.end.balance;
+        localStorage.setItem('cache', JSON.stringify(data));
       }
-
-      function restoreInputs () {
-        const cache = JSON.parse(localStorage.getItem('inputCache'));
-        if (!cache) return;
-        const named = document.querySelectorAll('input[id]');
-        const unnamed = document.querySelectorAll('input:not([id])');
-
-        [...named].forEach(e => { if (cache[e.id]) e.value = cache[e.id] });
-        [...unnamed].forEach((e, i) => { if (cache[''][i]) e.value = cache[''][i] });
-      }
+      const restoreData = () => window.data = JSON.parse(localStorage.getItem('cache'));
+      // const restoreData = () => {
+      //   window.data = {
+      //     open: {
+      //       date: '2021-08-31',
+      //       balance: '10211.31',
+      //       rate: '0.4'
+      //     },
+      //     changes: [
+      //       {
+      //         type: 'rate',
+      //         id: '4752efcb-2454-4522-af91-a2bb4453531d',
+      //         date: '2021-09-17',
+      //         rate: '0.35'
+      //       },
+      //       {
+      //         type: 'tx',
+      //         id: '91914d9a-b51e-427f-ada0-ae5652731be2',
+      //         date: '2021-09-23',
+      //         tx: '48.00',
+      //       },
+      //       {
+      //         type: 'tx',
+      //         id: 'c7935308-144c-46fc-8dad-3c2b72648d27',
+      //         date: '2022-04-01',
+      //         tx: '48.00',
+      //       },
+      //       {
+      //         type: 'rate',
+      //         id: 'c6f99a92-e34a-424c-8866-eee0beffb374',
+      //         date: '2022-04-13',
+      //         rate: '0.45'
+      //       },
+      //     ],
+      //     end: {
+      //       date: '2022-06-03'
+      //     }
+      //   }
+      // }
 
       const sanitiseNumber = (s) => {
         console.log('s', s);
@@ -137,19 +187,30 @@
         calculate();
       }
 
-      function addRow (rate = true) {
-        const newRowFragment = templateRow.content.cloneNode(true);
-        newRowFragment.querySelector('tr').id = crypto.randomUUID();
-        newRowFragment.querySelector('#date').id = ['date', crypto.randomUUID()].join('-');
-        newRowFragment.querySelector('#balance').id = ['balance', crypto.randomUUID()].join('-');
-        if (rate) {
-          newRowFragment.querySelector('#delta').remove();
-          newRowFragment.querySelector('#rate').id = ['rate', crypto.randomUUID()].join('-');
-        } else {
-          newRowFragment.querySelector('#delta').id = ['delta', crypto.randomUUID()].join('-');
-          newRowFragment.querySelector('#rate').remove();
-        }
-        buttonRow.parentElement.insertBefore(newRowFragment, buttonRow);
+      function addRow (isRate = true) {
+        // const newRowFragment = templateRow.content.cloneNode(true);
+        // const tr = newRowFragment.querySelector('tr')
+        // const date = newRowFragment.querySelector('.js-date')
+        // const balance = newRowFragment.querySelector('.js-balance')
+        // const tx = newRowFragment.querySelector('.js-tx')
+        // const rate = newRowFragment.querySelector('.js-rate')
+        // tr.id = crypto.randomUUID();
+        
+        // date.id = ['date', crypto.randomUUID()].join('-');
+        // balance.id = ['balance', crypto.randomUUID()].join('-');
+        // if (isRate) {
+        //   tr.dataset.type = 'rate';
+        //   tx.remove();
+        //   rate.id = ['rate', crypto.randomUUID()].join('-');
+        // } else {
+        //   tr.dataset.type = 'tx';
+        //   tx.id = ['tx', crypto.randomUUID()].join('-');
+        //   rate.remove();
+        // }
+        // buttonRow.parentElement.insertBefore(newRowFragment, buttonRow);
+
+        window.data = getChanges();
+        window.data.changes
       }
 
       function getChanges () {
@@ -158,24 +219,25 @@
         [...rows].forEach(r => {
           // console.log(r);
           const id = r.id;
-          const date = r.querySelector('[id|=date]');
-          const delta = r.querySelector('[id|=delta]');
-          const balance = r.querySelector('[id|=balance]');
-          const rate = r.querySelector('[id|=rate]');
-          // console.log({date, delta, balance, rate});
+          const type = r.dataset.type;
+          const date = r.querySelector('.js-date');
+          const tx = r.querySelector('.js-tx');
+          const balance = r.querySelector('.js-balance');
+          const rate = r.querySelector('.js-rate');
+          // console.log({date, tx, balance, rate});
 
           changes.push({
+            type,
             id,
             date: dayjs(date.value),
-            delta: delta ? Big(sanitiseNumber(delta.value)) : 0,
+            tx: tx ? Big(sanitiseNumber(tx.value)) : 0,
             balance: 'value' in balance ? Big(sanitiseNumber(balance.value)) : undefined,
-            balanceElement: 'value' in balance ? undefined : balance,
             rate: rate? Big(sanitiseNumber(rate.value)).div(100) : undefined
           });
         });
         const end = {
           date: dayjs(closeDateInput.value),
-          delta: 0,
+          tx: 0,
           balance: undefined,
           balanceElement: closeBalanceCell
         };
@@ -183,26 +245,68 @@
         return changes;
       }
 
+      function populate (data) {
+        openDateInput.value = data.open.date;
+        openBalanceInput.value = data.open.balance;
+        openRateInput.value = data.open.rate;
+        closeDateInput.value = data.end.date;
+        closeBalanceCell.textContent = data.end.balance;
+
+        data.changes.forEach(c => {
+          const newRowFragment = templateRow.content.cloneNode(true);
+          const tr = newRowFragment.querySelector('tr')
+          const date = newRowFragment.querySelector('.js-date')
+          const balance = newRowFragment.querySelector('.js-balance')
+          const tx = newRowFragment.querySelector('.js-tx')
+          const rate = newRowFragment.querySelector('.js-rate')
+          tr.id = c.id || crypto.randomUUID();
+          date.dataset.uid = tr.id;
+          date.value = c.date;
+          balance.dataset.uid = tr.id;
+          balance.textContent = c.balance
+          if (c.type == 'rate') {
+            tr.dataset.type = 'rate';
+            tx.remove();
+            rate.dataset.uid = tr.id;
+            rate.value = c.rate;
+          } else if (c.type == 'tx') {
+            tr.dataset.type = 'tx';
+            tx.dataset.uid = tr.id;
+            tx.value = c.tx
+            rate.remove();
+          }
+          buttonRow.parentElement.insertBefore(newRowFragment, buttonRow);
+        })
+
+      }
+
       function calculate () {
 
-        const changes = getChanges();
-        console.log([...changes]);
+        // window.data = getChanges();
+        // cacheData(window.data);
 
-        while (changes.length > 0) {
-          const current = changes.shift();
-          const next = changes[0];
-          // console.dir({current,  next});
+        for (let i = -1; i < window.data.changes.length; i++) {
+          const current = window.data.changes[i] ?? window.data.open;
+          const next = window.data.changes[i+1] ?? window.data.end;
 
-          const dailyRate = current.rate.div(365);
-          const days =  Math.abs(next.date.diff(current.date, 'days'));
+          const currentDate = dayjs(current.date);
+          const nextDate = dayjs(next.date);
+          const Y = nextDate.year();
+          console.log('current.balance', current.balance);
+          const balance = Big(current.balance);
+          const tx = Big(current.tx ?? 0);
+          const rate = Big(current.rate).div(100);
+
+          const dailyRate = rate.div((Y % 4 === 0) && (Y % 100 !== 0) || (Y % 400 === 0) ? 366 : 365);
+          const days =  Math.abs(nextDate.diff(currentDate, 'days'));
           if (days > 36525) throw new Error(`period is too long (${days} days)`);
 
-          if (days > 0) next.balance = dailyRate.plus(1).pow(days - 1).times(current.balance);
-          next.balance = next.balance.plus(current.delta);
+          console.log({dailyRate, days, balance});
+          if (days > 0) next.balance = dailyRate.plus(1).pow(days - 1).times(balance);
+          else next.balance = Big(0);
+          next.balance = next.balance.plus(tx);
           next.balance = dailyRate.plus(1).pow(1).times(next.balance).toFixed(4);
           if (next.rate == undefined) next.rate = current.rate;
-          // console.dir({current,  next});
-          next.balanceElement.textContent = next.balance;
         }
       }
       
